@@ -10,6 +10,7 @@ import tempfile
 from dotenv import load_dotenv
 load_dotenv()
 import subprocess
+from fastapi.responses import JSONResponse
 from typing import List, Dict, Any, Optional
 
 import requests
