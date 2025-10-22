@@ -110,8 +110,9 @@ async def handle_task(request: Request):
     # 3️⃣ Prepare minimal repo files
     repo_name = f"{task}-{round_}"
     repo_files = {
-        "README.md": f"# Task: {task}\n\nBrief: {brief}\nRound: {round_}\n",
-        "index.html": f"<html><body><h1>{brief}</h1></body></html>"
+        "README.md": f"# Task: {task}\n\nBrief: {brief}\nRound: {round_}\n\n## License\nThis project is licensed under the MIT License – see the LICENSE file for details.\n",
+        "index.html": f"<html><body><h1>{brief}</h1></body></html>",
+        "LICENSE": MIT_LICENSE.format(user=GITHUB_USER)
     }
 
     # 4️⃣ Create or update GitHub repo
