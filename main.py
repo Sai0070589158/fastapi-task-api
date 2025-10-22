@@ -10,7 +10,7 @@ app = FastAPI(title="Student Build API")
 # Environment Variables
 # -------------------------
 SECRET = os.getenv("APP_SECRET", "sainathshelke06@gmail.com1234567890")
-GITHUB_TOKEN = os.getenv("GITHUB_PAT")  # Your GitHub Personal Access Token
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")  # Your GitHub Personal Access Token
 GITHUB_USER = os.getenv("GITHUB_USER", "your-github-username")  # GitHub username for Pages
 
 # -------------------------
