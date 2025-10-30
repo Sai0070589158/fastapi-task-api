@@ -46,11 +46,17 @@ def enable_pages(repo_name: str):
     }
     body = {"source": {"branch": "main"}}
     r = requests.post(url, headers=headers, json=body)
-    if r.status_code in (201, 202):
-        return f"https://{GITHUB_USER}.github.io/{repo_name}/"
-    print("GitHub Pages setup failed:", r.text)
-    return None
 
+    if r.status_code in (201, 202):
+        # Pages successfully enabled
+        return f"https://{GITHUB_USER}.github.io/{repo_name}/"
+    elif r.status_code == 409:
+        # Pages already enabled — just return existing URL
+        print(f"ℹ️ GitHub Pages already enabled for {repo_name}.")
+        return f"https://{GITHUB_USER}.github.io/{repo_name}/"
+    else:
+        print("GitHub Pages setup failed:", r.json())
+        return None
 
 def create_or_update_repo(task_name: str, repo_files: dict):
     g = Github(GITHUB_TOKEN)
