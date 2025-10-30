@@ -21,6 +21,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 # Initialize Groq client (free, OpenAI-compatible)
 client = Groq(api_key=GROQ_API_KEY)
 model="llama-3.3-70b-versatile"
+
 MIT_LICENSE = """MIT License
 
 Copyright (c) 2025 {user}
@@ -148,7 +149,7 @@ Design expectations:
 """
 
     response = client.chat.completions.create(
-        model="llama3-groq-70b-8192-tool-use-preview",  # stronger model
+        model="llama-3.3-70b-versatile", 
         messages=[{"role": "user", "content": prompt}],
         temperature=0.7,
     )
