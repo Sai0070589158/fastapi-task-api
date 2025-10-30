@@ -1,4 +1,3 @@
-# main.py
 import os
 import json
 import time
@@ -6,6 +5,18 @@ import requests
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 from github import Github, GithubException
+from openai import OpenAI  # Requires: pip install openai
+
+app = FastAPI(title="Student Build API")
+
+# -------------------------
+# Environment Variables
+# -------------------------
+SECRET = os.getenv("APP_SECRET", "sainathshelke06@gmail.com1234567890")
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+GITHUB_USER = os.getenv("GITHUB_USER", "Sai0070589158")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # Your OpenAI API key
+MODEL = os.getenv("MODEL", "gpt-4o-mini")  # Or 'gpt-4o' if available
 
 MIT_LICENSE = """MIT License
 
@@ -26,37 +37,20 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 """
 
-app = FastAPI(title="Student Build API")
-
 # -------------------------
-# Environment
-# -------------------------
-SECRET = os.getenv("APP_SECRET", "sainathshelke06@gmail.com1234567890")
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-GITHUB_USER = os.getenv("GITHUB_USER", "Sai0070589158")
-
-# -------------------------
-# GitHub Helpers
+# GitHub Functions
 # -------------------------
 def enable_pages(repo_name: str):
     url = f"https://api.github.com/repos/{GITHUB_USER}/{repo_name}/pages"
-    headers = {
-        "Authorization": f"token {GITHUB_TOKEN}",
-        "Accept": "application/vnd.github+json"
-    }
-    body = {"source": {"branch": "main"}}
-    r = requests.post(url, headers=headers, json=body)
+    headers = {"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github+json"}
+    r = requests.post(url, headers=headers, json={"source": {"branch": "main"}})
 
-    if r.status_code in (201, 202):
-        # Pages successfully enabled
-        return f"https://{GITHUB_USER}.github.io/{repo_name}/"
-    elif r.status_code == 409:
-        # Pages already enabled — just return existing URL
-        print(f"ℹ️ GitHub Pages already enabled for {repo_name}.")
+    if r.status_code in (201, 202, 409):
         return f"https://{GITHUB_USER}.github.io/{repo_name}/"
     else:
-        print("GitHub Pages setup failed:", r.json())
+        print("⚠️ GitHub Pages setup failed:", r.json())
         return None
+
 
 def create_or_update_repo(task_name: str, repo_files: dict):
     g = Github(GITHUB_TOKEN)
@@ -72,9 +66,9 @@ def create_or_update_repo(task_name: str, repo_files: dict):
                 name=task_name,
                 private=False,
                 description=f"Repo for task {task_name}",
-                auto_init=True
+                auto_init=True,
             )
-            print(f"Created repo: {repo.html_url}")
+            print(f"✅ Created repo: {repo.html_url}")
 
         for filename, content in repo_files.items():
             try:
@@ -83,20 +77,21 @@ def create_or_update_repo(task_name: str, repo_files: dict):
                     path=filename,
                     message=f"Update {filename}",
                     content=content,
-                    sha=existing.sha
+                    sha=existing.sha,
                 )
             except GithubException:
                 commit = repo.create_file(
                     path=filename,
                     message=f"Add {filename}",
-                    content=content
+                    content=content,
                 )
             commit_sha = commit["commit"].sha
 
         repo_url = repo.html_url
         pages_url = enable_pages(repo.name)
+
     except GithubException as e:
-        print("GitHub error:", e)
+        print("❌ GitHub error:", e)
 
     return repo_url, pages_url, commit_sha
 
@@ -110,11 +105,61 @@ def ping_evaluation_api(evaluation_url, payload):
                 print("✅ Evaluation API notified.")
                 return True
             else:
-                print("Evaluation API failed:", r.status_code, r.text)
+                print("⚠️ Eval API failed:", r.status_code, r.text)
         except Exception as e:
-            print("Eval ping error:", e)
+            print("❌ Eval ping error:", e)
         time.sleep(delay)
     return False
+
+
+# -------------------------
+# LLM Code Generator
+# -------------------------
+def generate_app_files(task: str, brief: str):
+    """Uses GPT to generate HTML, CSS, and JS for a web app."""
+    if not OPENAI_API_KEY:
+        print("⚠️ No OpenAI API key provided, using fallback page.")
+        return {
+            "index.html": f"<html><body><h1>{brief}</h1><p>Task: {task}</p></body></html>",
+        }
+
+    client = OpenAI(api_key=OPENAI_API_KEY)
+    prompt = f"""
+You are a web app generator. Build a small functional HTML/CSS/JS app based on this description:
+
+Task: {task}
+Brief: {brief}
+
+Requirements:
+- Use modern responsive HTML5.
+- Include relevant CSS and minimal JavaScript if needed.
+- No external dependencies or frameworks.
+- The app must render a working UI, not just text.
+Return only file contents in JSON format with filenames as keys.
+Example:
+{{
+  "index.html": "...",
+  "style.css": "...",
+  "script.js": "..."
+}}
+"""
+
+    response = client.chat.completions.create(
+        model=MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.4,
+    )
+
+    try:
+        text = response.choices[0].message.content.strip()
+        files = json.loads(text)
+        return files
+    except Exception as e:
+        print("⚠️ LLM output parse error:", e)
+        return {
+            "index.html": f"<html><body><h1>{brief}</h1><p>Task: {task}</p></body></html>",
+        }
+
 
 # -------------------------
 # Routes
@@ -123,9 +168,11 @@ def ping_evaluation_api(evaluation_url, payload):
 def home():
     return {"message": "Server running successfully"}
 
+
 @app.head("/")
 def head_home():
     return Response(status_code=200)
+
 
 @app.post("/task")
 async def handle_task(request: Request):
@@ -140,35 +187,16 @@ async def handle_task(request: Request):
     nonce = data.get("nonce")
     evaluation_url = data.get("evaluation_url")
 
-    repo_name = f"{task}"
-    print(f"Handling round {round_} for task {task}")
+    print(f"🧩 Received task: {task} | Round: {round_}")
 
-    html = f"""
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <title>{task} - Round {round_}</title>
-      <style>
-        body {{ font-family: Arial; text-align:center; background:#fafafa; padding:40px; }}
-        h1 {{ color:#333; }}
-        p {{ color:#555; }}
-      </style>
-    </head>
-    <body>
-      <h1>{brief}</h1>
-      <p>Task: <b>{task}</b> | Round: <b>{round_}</b></p>
-    </body>
-    </html>
-    """
+    # 🔹 Generate files via LLM
+    app_files = generate_app_files(task, brief)
 
-    repo_files = {
-        "README.md": f"# {task}\n\n**Brief:** {brief}\n\n**Round:** {round_}\n\nThis project is licensed under the MIT License.",
-        "index.html": html,
-        "LICENSE": MIT_LICENSE.format(user=GITHUB_USER)
-    }
+    # Add README and LICENSE
+    app_files["README.md"] = f"# {task}\n\n**Brief:** {brief}\n\n**Round:** {round_}\n\nMIT License included."
+    app_files["LICENSE"] = MIT_LICENSE.format(user=GITHUB_USER)
 
-    repo_url, pages_url, commit_sha = create_or_update_repo(repo_name, repo_files)
+    repo_url, pages_url, commit_sha = create_or_update_repo(task, app_files)
 
     result = {
         "status": "ok",
@@ -178,7 +206,7 @@ async def handle_task(request: Request):
         "nonce": nonce,
         "repo_url": repo_url,
         "pages_url": pages_url,
-        "commit_sha": commit_sha
+        "commit_sha": commit_sha,
     }
 
     if evaluation_url:
