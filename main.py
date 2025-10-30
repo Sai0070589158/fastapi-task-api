@@ -160,6 +160,73 @@ Design expectations:
     except Exception:
         files = {"index.html": content}
     return files
+# -------------------------
+# Visual Enhancement Helper
+# -------------------------
+def enhance_visuals(app_files: dict) -> dict:
+    """Auto-enhance HTML and CSS for better visuals."""
+    html_code = app_files.get("index.html", "")
+    css_code = app_files.get("styles.css", "")
+
+    # ✅ Add Google Fonts + smooth scroll
+    if "<head>" in html_code:
+        html_code = html_code.replace(
+            "<head>",
+            """<head>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Poppins', sans-serif; transition: background 0.5s ease, color 0.5s ease; }
+      html { scroll-behavior: smooth; }
+    </style>
+""",
+        )
+
+    # ✅ Enhance CSS with modern visuals
+    css_code += """
+/* --- Auto Enhanced Visuals --- */
+header {
+  background: linear-gradient(135deg, #007bff, #8e44ad);
+  color: white;
+  padding: 1.5rem;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  transition: all 0.5s ease-in-out;
+}
+section {
+  animation: fadeIn 1s ease-in;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.project-card:hover {
+  box-shadow: 0 0 20px rgba(142, 68, 173, 0.6);
+  transform: translateY(-5px);
+  transition: all 0.3s ease;
+}
+.dark-mode {
+  background: #121212;
+  color: #f0f0f0;
+}
+"""
+
+    # ✅ Add dark/light mode toggle button
+    if "</body>" in html_code:
+        html_code = html_code.replace(
+            "</body>",
+            """<button id="modeToggle" style="position:fixed;bottom:20px;right:20px;padding:10px 15px;border:none;border-radius:8px;background:#8e44ad;color:white;cursor:pointer;">🌗</button>
+<script>
+const toggle = document.getElementById('modeToggle');
+toggle.addEventListener('click', () => {
+  document.body.classList.toggle('dark-mode');
+});
+</script>
+</body>"""
+        )
+
+    app_files["index.html"] = html_code
+    app_files["styles.css"] = css_code
+    return app_files
 
 # -------------------------
 # Routes
@@ -200,6 +267,7 @@ async def handle_task(request: Request):
 
     # LLM generation
     app_files = generate_app_files(task, brief)
+    app_files = enhance_visuals(app_files)
 
     # Add license and readme
     app_files["README.md"] = f"# {task}\n\n**Brief:** {brief}\n\n**Round:** {round_}\n\nMIT License."
