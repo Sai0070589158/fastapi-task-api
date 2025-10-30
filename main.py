@@ -20,7 +20,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 # Initialize Groq client (free, OpenAI-compatible)
 client = Groq(api_key=GROQ_API_KEY)
-MODEL = "llama-3.2-11b-text"
+MODEL = "llama-3.1-8b-instant"
 
 MIT_LICENSE = """MIT License
 
