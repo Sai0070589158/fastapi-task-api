@@ -155,10 +155,18 @@ Design expectations:
     )
 
     content = response.choices[0].message.content.strip()
-    try:
-        files = json.loads(content)
-    except Exception:
+       # 🧩 Fix: Extract only JSON content safely
+    json_start = content.find("{")
+    json_end = content.rfind("}") + 1
+    if json_start != -1 and json_end != -1:
+        try:
+            content_json = content[json_start:json_end]
+            files = json.loads(content_json)
+        except json.JSONDecodeError:
+            files = {"index.html": content}
+    else:
         files = {"index.html": content}
+
     return files
 # -------------------------
 # Visual Enhancement Helper
