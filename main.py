@@ -1,9 +1,12 @@
 # main.py
 import os
+import json
+import time
 import requests
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 from github import Github, GithubException
+
 MIT_LICENSE = """MIT License
 
 Copyright (c) 2025 {user}
@@ -20,24 +23,20 @@ copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 """
 
 app = FastAPI(title="Student Build API")
 
 # -------------------------
-# Environment Variables
+# Environment
 # -------------------------
 SECRET = os.getenv("APP_SECRET", "sainathshelke06@gmail.com1234567890")
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")  # Your GitHub Personal Access Token
-GITHUB_USER = os.getenv("GITHUB_USER", "Sai0070589158")  # GitHub username
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+GITHUB_USER = os.getenv("GITHUB_USER", "Sai0070589158")
 
 # -------------------------
-# Helper: Enable GitHub Pages
+# GitHub Helpers
 # -------------------------
 def enable_pages(repo_name: str):
     url = f"https://api.github.com/repos/{GITHUB_USER}/{repo_name}/pages"
@@ -49,64 +48,74 @@ def enable_pages(repo_name: str):
     r = requests.post(url, headers=headers, json=body)
     if r.status_code in (201, 202):
         return f"https://{GITHUB_USER}.github.io/{repo_name}/"
-    else:
-        print("GitHub Pages setup failed:", r.json())
-        return None
+    print("GitHub Pages setup failed:", r.text)
+    return None
 
-# -------------------------
-# Helper: Create/Update Repo
-# -------------------------
+
 def create_or_update_repo(task_name: str, repo_files: dict):
     g = Github(GITHUB_TOKEN)
     user = g.get_user()
-    repo_url, pages_url = None, None
+    repo_url, pages_url, commit_sha = None, None, None
 
     try:
-        # Check if repo exists
         try:
             repo = user.get_repo(task_name)
-            print(f"Repo {task_name} exists. Updating...")
+            print(f"Repo {task_name} exists.")
         except GithubException:
             repo = user.create_repo(
                 name=task_name,
                 private=False,
                 description=f"Repo for task {task_name}",
-                auto_init=True  # ensure main branch exists
+                auto_init=True
             )
             print(f"Created repo: {repo.html_url}")
 
-        # Commit or update files (force commit)
         for filename, content in repo_files.items():
             try:
-                existing_file = repo.get_contents(filename)
-                repo.update_file(
+                existing = repo.get_contents(filename)
+                commit = repo.update_file(
                     path=filename,
                     message=f"Update {filename}",
                     content=content,
-                    sha=existing_file.sha
+                    sha=existing.sha
                 )
             except GithubException:
-                repo.create_file(path=filename, message=f"Add {filename}", content=content)
+                commit = repo.create_file(
+                    path=filename,
+                    message=f"Add {filename}",
+                    content=content
+                )
+            commit_sha = commit["commit"].sha
 
-        # Return repo URL
         repo_url = repo.html_url
-
-        # Enable GitHub Pages
         pages_url = enable_pages(repo.name)
-        if pages_url:
-            print(f"GitHub Pages available at {pages_url}")
-
     except GithubException as e:
-        print("GitHub push failed:", e)
+        print("GitHub error:", e)
 
-    return repo_url, pages_url
+    return repo_url, pages_url, commit_sha
+
+
+def ping_evaluation_api(evaluation_url, payload):
+    headers = {"Content-Type": "application/json"}
+    for delay in [1, 2, 4, 8]:
+        try:
+            r = requests.post(evaluation_url, headers=headers, json=payload)
+            if r.status_code == 200:
+                print("✅ Evaluation API notified.")
+                return True
+            else:
+                print("Evaluation API failed:", r.status_code, r.text)
+        except Exception as e:
+            print("Eval ping error:", e)
+        time.sleep(delay)
+    return False
 
 # -------------------------
 # Routes
 # -------------------------
 @app.get("/")
 def home():
-    return {"message": "Server is running!"}
+    return {"message": "Server running successfully"}
 
 @app.head("/")
 def head_home():
@@ -115,38 +124,59 @@ def head_home():
 @app.post("/task")
 async def handle_task(request: Request):
     data = await request.json()
-
-    # 1️⃣ Verify secret
     if data.get("secret") != SECRET:
         return JSONResponse(status_code=403, content={"error": "Invalid secret"})
 
-    # 2️⃣ Extract task info
     email = data.get("email")
     task = data.get("task")
-    brief = data.get("brief")
-    round_ = data.get("round")
+    brief = data.get("brief", "")
+    round_ = data.get("round", 1)
     nonce = data.get("nonce")
+    evaluation_url = data.get("evaluation_url")
 
-    print(f"Received task: {task} for {email}, round {round_}")
+    repo_name = f"{task}"
+    print(f"Handling round {round_} for task {task}")
 
-    # 3️⃣ Prepare minimal repo files
-    repo_name = f"{task}-{round_}"
+    html = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <title>{task} - Round {round_}</title>
+      <style>
+        body {{ font-family: Arial; text-align:center; background:#fafafa; padding:40px; }}
+        h1 {{ color:#333; }}
+        p {{ color:#555; }}
+      </style>
+    </head>
+    <body>
+      <h1>{brief}</h1>
+      <p>Task: <b>{task}</b> | Round: <b>{round_}</b></p>
+    </body>
+    </html>
+    """
+
     repo_files = {
-        "README.md": f"# Task: {task}\n\nBrief: {brief}\nRound: {round_}\n\n## License\nThis project is licensed under the MIT License – see the LICENSE file for details.\n",
-        "index.html": f"<html><body><h1>{brief}</h1></body></html>",
+        "README.md": f"# {task}\n\n**Brief:** {brief}\n\n**Round:** {round_}\n\nThis project is licensed under the MIT License.",
+        "index.html": html,
         "LICENSE": MIT_LICENSE.format(user=GITHUB_USER)
     }
 
-    # 4️⃣ Create or update GitHub repo
-    repo_url, pages_url = create_or_update_repo(repo_name, repo_files)
+    repo_url, pages_url, commit_sha = create_or_update_repo(repo_name, repo_files)
 
-    # 5️⃣ Respond with JSON
-    return {
+    result = {
         "status": "ok",
         "email": email,
         "task": task,
         "round": round_,
         "nonce": nonce,
         "repo_url": repo_url,
-        "pages_url": pages_url
+        "pages_url": pages_url,
+        "commit_sha": commit_sha
     }
+
+    if evaluation_url:
+        ping_evaluation_api(evaluation_url, result)
+
+    return result
+
