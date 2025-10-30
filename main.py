@@ -20,8 +20,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 # Initialize Groq client (free, OpenAI-compatible)
 client = Groq(api_key=GROQ_API_KEY)
-MODEL = "llama-3.1-8b-instant"
-
+model="llama-3.3-70b-versatile"
 MIT_LICENSE = """MIT License
 
 Copyright (c) 2025 {user}
@@ -127,34 +126,39 @@ def ping_evaluation_api(evaluation_url, payload):
 # LLM App Generator
 # -------------------------
 def generate_app_files(task, brief):
-    """Use Groq Llama-3.1-70B to generate a small web app."""
+    """Use Groq Llama model to generate a high-quality web app."""
     prompt = f"""
-You are an expert full-stack web app generator.
-Build a self-contained web app for this task.
+You are an expert front-end developer and web designer.
+
+Generate a **modern, visually stunning, responsive web app** in English.
+Follow this request:
 
 Task: {task}
 Brief: {brief}
 
-Output must be a JSON object with filenames as keys and code as values.
-Include at least index.html (required). Use simple HTML/CSS/JS.
+Design expectations:
+- Use HTML5, CSS3 (Flexbox/Grid), and vanilla JS
+- Include a gradient header (blue → purple), modern fonts, and hover animations
+- Must be responsive and mobile-friendly
+- Include a hero section, projects grid, about section, and footer
+- Output a JSON object with 3 keys: "index.html", "styles.css", and "script.js"
+- Each file should contain realistic, production-quality code
+- Keep code indentation and line breaks intact
+- Do not include any explanatory text outside JSON
 """
 
     response = client.chat.completions.create(
-        model=MODEL,
+        model="llama3-groq-70b-8192-tool-use-preview",  # stronger model
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.4,
+        temperature=0.7,
     )
 
     content = response.choices[0].message.content.strip()
     try:
         files = json.loads(content)
-        print("✅ Parsed LLM JSON output successfully.")
     except Exception:
         files = {"index.html": content}
-        print("⚠️ LLM returned non-JSON — wrapping in HTML.")
-
     return files
-
 
 # -------------------------
 # Routes
