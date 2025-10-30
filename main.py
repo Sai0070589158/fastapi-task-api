@@ -164,61 +164,212 @@ Design expectations:
 # Visual Enhancement Helper
 # -------------------------
 def enhance_visuals(app_files: dict) -> dict:
-    """Auto-enhance HTML and CSS for better visuals."""
+    """Enhance the generated HTML and CSS with premium modern visuals and interactivity."""
     html_code = app_files.get("index.html", "")
     css_code = app_files.get("styles.css", "")
 
-    # ✅ Add Google Fonts + smooth scroll
+    # ✅ Inject Google Fonts, Meta, and Base Styles
     if "<head>" in html_code:
         html_code = html_code.replace(
             "<head>",
             """<head>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-      body { font-family: 'Poppins', sans-serif; transition: background 0.5s ease, color 0.5s ease; }
       html { scroll-behavior: smooth; }
+      body {
+        font-family: 'Poppins', sans-serif;
+        transition: background 0.6s ease, color 0.6s ease;
+        overflow-x: hidden;
+      }
+      ::selection {
+        background: #8e44ad;
+        color: white;
+      }
     </style>
-""",
+"""
         )
 
-    # ✅ Enhance CSS with modern visuals
+    # ✅ Add Modern Enhanced CSS
     css_code += """
-/* --- Auto Enhanced Visuals --- */
+/* --- Enhanced Modern Visuals --- */
+:root {
+  --primary: #8e44ad;
+  --secondary: #007bff;
+  --text: #333;
+  --bg: #f9f9f9;
+  --dark-bg: #121212;
+  --dark-text: #f0f0f0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Glassmorphism Header with Gradient Animation */
 header {
-  background: linear-gradient(135deg, #007bff, #8e44ad);
+  background: linear-gradient(270deg, var(--secondary), var(--primary));
+  background-size: 400% 400%;
+  animation: gradientShift 8s ease infinite;
   color: white;
-  padding: 1.5rem;
   text-align: center;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-  transition: all 0.5s ease-in-out;
+  padding: 2rem 1rem;
+  border-bottom: 2px solid rgba(255,255,255,0.2);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 30px rgba(0,0,0,0.2);
 }
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Navbar */
+nav {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-top: 1rem;
+}
+nav a {
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  position: relative;
+}
+nav a::after {
+  content: '';
+  position: absolute;
+  left: 0; bottom: -4px;
+  width: 0; height: 2px;
+  background: white;
+  transition: width 0.3s;
+}
+nav a:hover::after {
+  width: 100%;
+}
+
+/* Section Fade-in + Parallax */
 section {
-  animation: fadeIn 1s ease-in;
+  padding: 4rem 2rem;
+  animation: fadeUp 1s ease-in;
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(6px);
+  margin: 2rem auto;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  max-width: 1100px;
 }
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(30px); }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(40px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.project-card:hover {
-  box-shadow: 0 0 20px rgba(142, 68, 173, 0.6);
-  transform: translateY(-5px);
-  transition: all 0.3s ease;
+
+/* Project Cards */
+.project-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border-radius: 16px;
+  overflow: hidden;
+  background: white;
 }
+.project-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 8px 30px rgba(142,68,173,0.3);
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 2rem;
+  background: linear-gradient(270deg, var(--primary), var(--secondary));
+  color: white;
+  font-size: 0.9rem;
+}
+
+/* Dark Mode */
 .dark-mode {
-  background: #121212;
-  color: #f0f0f0;
+  background: var(--dark-bg);
+  color: var(--dark-text);
+}
+.dark-mode header {
+  box-shadow: 0 0 20px rgba(142,68,173,0.6);
+}
+.dark-mode section {
+  background: rgba(255,255,255,0.05);
+  box-shadow: 0 0 20px rgba(255,255,255,0.1);
+}
+.dark-mode footer {
+  background: linear-gradient(270deg, #1a1a1a, #3a3a3a);
+}
+
+/* Scroll reveal animation */
+.reveal {
+  opacity: 0;
+  transform: translateY(50px);
+  transition: all 0.8s ease;
+}
+.reveal.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Back to top button */
+#backToTop {
+  position: fixed;
+  bottom: 25px;
+  right: 25px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  padding: 14px;
+  cursor: pointer;
+  font-size: 20px;
+  display: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  transition: background 0.3s;
+}
+#backToTop:hover {
+  background: var(--secondary);
 }
 """
 
-    # ✅ Add dark/light mode toggle button
+    # ✅ Add interactivity and dark mode persistence
     if "</body>" in html_code:
         html_code = html_code.replace(
             "</body>",
-            """<button id="modeToggle" style="position:fixed;bottom:20px;right:20px;padding:10px 15px;border:none;border-radius:8px;background:#8e44ad;color:white;cursor:pointer;">🌗</button>
+            """<button id="modeToggle" title="Toggle dark mode">🌙</button>
+<button id="backToTop" title="Back to top">⬆</button>
+
 <script>
+// --- Dark Mode with Persistence ---
 const toggle = document.getElementById('modeToggle');
+const userPref = localStorage.getItem('theme');
+if (userPref === 'dark') document.body.classList.add('dark-mode');
+
 toggle.addEventListener('click', () => {
   document.body.classList.toggle('dark-mode');
+  const mode = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+  localStorage.setItem('theme', mode);
+  toggle.textContent = mode === 'dark' ? '☀️' : '🌙';
+});
+
+// --- Scroll Reveal Effect ---
+window.addEventListener('scroll', () => {
+  document.querySelectorAll('.reveal').forEach(el => {
+    const rect = el.getBoundingClientRect();
+    if (rect.top < window.innerHeight - 100) el.classList.add('active');
+  });
+});
+
+// --- Back to Top Button ---
+const backToTop = document.getElementById('backToTop');
+window.addEventListener('scroll', () => {
+  backToTop.style.display = window.scrollY > 300 ? 'block' : 'none';
+});
+backToTop.addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 </script>
 </body>"""
