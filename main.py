@@ -126,26 +126,23 @@ def ping_evaluation_api(evaluation_url, payload):
 # -------------------------
 # LLM App Generator
 # -------------------------
+import re
+import json
+
 def generate_app_files(task, brief):
     """Use Groq Llama model to generate a high-quality web app."""
     prompt = f"""
-You are an expert front-end developer and web designer.
-
-Generate a **modern, visually stunning, responsive web app** in English.
-Follow this request:
+You are an expert front-end developer. 
+Generate a modern, responsive web app with HTML, CSS, and JS.
+Return ONLY a valid JSON object with these keys:
+- index.html
+- styles.css
+- script.js
 
 Task: {task}
 Brief: {brief}
 
-Design expectations:
-- Use HTML5, CSS3 (Flexbox/Grid), and vanilla JS
-- Include a gradient header (blue → purple), modern fonts, and hover animations
-- Must be responsive and mobile-friendly
-- Include a hero section, projects grid, about section, and footer
-- Output a JSON object with 3 keys: "index.html", "styles.css", and "script.js"
-- Each file should contain realistic, production-quality code
-- Keep code indentation and line breaks intact
-- Do not include any explanatory text outside JSON
+Do NOT include explanations or code fences.
 """
 
     response = client.chat.completions.create(
@@ -155,19 +152,20 @@ Design expectations:
     )
 
     content = response.choices[0].message.content.strip()
-       # 🧩 Fix: Extract only JSON content safely
-    json_start = content.find("{")
-    json_end = content.rfind("}") + 1
-    if json_start != -1 and json_end != -1:
+
+    # 🔍 Extract JSON using regex (handles markdown or extra text)
+    match = re.search(r'\{[\s\S]*\}', content)
+    if match:
         try:
-            content_json = content[json_start:json_end]
-            files = json.loads(content_json)
+            files = json.loads(match.group(0))
         except json.JSONDecodeError:
+            print("⚠️ JSON decode failed, using fallback to HTML")
             files = {"index.html": content}
     else:
         files = {"index.html": content}
 
     return files
+
 # -------------------------
 # Visual Enhancement Helper
 # -------------------------
